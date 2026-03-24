@@ -10,6 +10,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 
 export default function DashboardPage() {
   const { profile } = useAuth();
+  const navigate = useNavigate();
   const [stats, setStats] = useState({ members: 0, events: 0, totalAttendance: 0, activeEvents: 0 });
   const [chartData, setChartData] = useState<{ name: string; presenças: number }[]>([]);
 
