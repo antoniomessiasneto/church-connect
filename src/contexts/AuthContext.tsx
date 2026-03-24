@@ -37,6 +37,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(session?.user ?? null);
 
       if (session?.user) {
+        setLoading(true);
         // Defer fetching to avoid deadlock
         setTimeout(() => {
           fetchUserData(session.user.id);
