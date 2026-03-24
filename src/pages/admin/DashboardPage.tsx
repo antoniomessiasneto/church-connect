@@ -67,6 +67,18 @@ export default function DashboardPage() {
         <p className="text-muted-foreground mt-1">Saúde da Comunidade</p>
       </div>
 
+      {/* Quick Actions */}
+      <div className="flex flex-wrap gap-3">
+        <Button onClick={() => navigate("/admin/presencas")} className="gap-2">
+          <CalendarPlus className="h-4 w-4" strokeWidth={1.5} />
+          Criar Culto / Evento
+        </Button>
+        <Button variant="outline" onClick={() => navigate("/admin/presencas")} className="gap-2 border-border">
+          <QrCode className="h-4 w-4" strokeWidth={1.5} />
+          Ver QR Codes
+        </Button>
+      </div>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {cards.map((card, i) => (
           <motion.div
