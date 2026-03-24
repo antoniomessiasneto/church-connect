@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Search, UserPlus } from "lucide-react";
+import { Search, UserPlus, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 
@@ -14,6 +14,8 @@ interface Member {
   user_id: string;
   full_name: string;
   phone: string | null;
+  address: string | null;
+  birth_date: string | null;
   created_at: string;
 }
 
@@ -22,10 +24,17 @@ export default function MembersPage() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [newEmail, setNewEmail] = useState("");
   const [newName, setNewName] = useState("");
   const [newPhone, setNewPhone] = useState("");
   const [creating, setCreating] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [editMember, setEditMember] = useState<Member | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editAddress, setEditAddress] = useState("");
+  const [editBirthDate, setEditBirthDate] = useState("");
 
   useEffect(() => {
     fetchMembers();
@@ -34,7 +43,7 @@ export default function MembersPage() {
   async function fetchMembers() {
     const { data, error } = await supabase
       .from("profiles")
-      .select("id, user_id, full_name, phone, created_at")
+      .select("id, user_id, full_name, phone, address, birth_date, created_at")
       .order("full_name");
 
     if (data) setMembers(data);
@@ -71,6 +80,43 @@ export default function MembersPage() {
       toast.error(error.message || "Erro ao cadastrar membro");
     } finally {
       setCreating(false);
+    }
+  };
+
+  const openEditDialog = (member: Member) => {
+    setEditMember(member);
+    setEditName(member.full_name);
+    setEditPhone(member.phone || "");
+    setEditAddress(member.address || "");
+    setEditBirthDate(member.birth_date || "");
+    setEditDialogOpen(true);
+  };
+
+  const handleEditMember = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editMember) return;
+    setSaving(true);
+    try {
+      const res = await supabase.functions.invoke("update-member", {
+        body: {
+          user_id: editMember.user_id,
+          full_name: editName,
+          phone: editPhone || null,
+          address: editAddress || null,
+          birth_date: editBirthDate || null,
+        },
+      });
+
+      if (res.error) throw new Error(res.error.message);
+      if (res.data?.error) throw new Error(res.data.error);
+
+      toast.success("Membro atualizado com sucesso!");
+      setEditDialogOpen(false);
+      fetchMembers();
+    } catch (error: any) {
+      toast.error(error.message || "Erro ao atualizar membro");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -113,6 +159,36 @@ export default function MembersPage() {
         </Dialog>
       </div>
 
+      {/* Edit Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="bg-card border-border">
+          <DialogHeader>
+            <DialogTitle className="font-display text-xl">Editar Membro</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleEditMember} className="space-y-4">
+            <div className="space-y-2">
+              <Label className="text-muted-foreground text-sm">Nome completo</Label>
+              <Input value={editName} onChange={(e) => setEditName(e.target.value)} required className="bg-input border-border" />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-muted-foreground text-sm">Telefone</Label>
+              <Input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} className="bg-input border-border" />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-muted-foreground text-sm">Endereço</Label>
+              <Input value={editAddress} onChange={(e) => setEditAddress(e.target.value)} className="bg-input border-border" />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-muted-foreground text-sm">Data de nascimento</Label>
+              <Input type="date" value={editBirthDate} onChange={(e) => setEditBirthDate(e.target.value)} className="bg-input border-border" />
+            </div>
+            <Button type="submit" disabled={saving} className="w-full">
+              {saving ? "Salvando..." : "Salvar alterações"}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" strokeWidth={1.5} />
         <Input
@@ -147,9 +223,14 @@ export default function MembersPage() {
                       <p className="text-sm text-muted-foreground">{member.phone || "Sem telefone"}</p>
                     </div>
                   </div>
-                  <p className="text-xs text-muted-foreground tabular-nums">
-                    {new Date(member.created_at).toLocaleDateString("pt-BR")}
-                  </p>
+                  <div className="flex items-center gap-3">
+                    <p className="text-xs text-muted-foreground tabular-nums hidden sm:block">
+                      {new Date(member.created_at).toLocaleDateString("pt-BR")}
+                    </p>
+                    <Button variant="ghost" size="icon" onClick={() => openEditDialog(member)} className="text-muted-foreground hover:text-primary">
+                      <Pencil className="h-4 w-4" strokeWidth={1.5} />
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             </motion.div>

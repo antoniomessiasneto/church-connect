@@ -25,7 +25,7 @@ export default function AdminLayout() {
           <header className="h-14 flex items-center border-b border-border px-4 bg-card/50">
             <SidebarTrigger className="mr-4" />
             <span className="font-display text-lg text-foreground">
-              Ecclesia <span className="text-primary italic">OS</span>
+              Presença <span className="text-primary italic">Igreja</span>
             </span>
           </header>
           <main className="flex-1 p-6 overflow-auto">

@@ -105,7 +105,7 @@ export default function CheckinPage() {
       {/* Header */}
       <header className="flex items-center justify-between px-4 py-3 border-b border-border">
         <span className="font-display text-lg">
-          Ecclesia <span className="text-primary italic">OS</span>
+          Presença <span className="text-primary italic">Igreja</span>
         </span>
         <div className="flex items-center gap-3">
           <span className="text-sm text-muted-foreground">{profile?.full_name}</span>

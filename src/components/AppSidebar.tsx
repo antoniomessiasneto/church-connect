@@ -40,7 +40,7 @@ export function AppSidebar() {
         {!collapsed && (
           <div className="px-4 py-6 border-b border-sidebar-border">
             <h2 className="font-display text-xl text-sidebar-foreground">
-              Ecclesia <span className="text-sidebar-primary italic">OS</span>
+              Presença <span className="text-sidebar-primary italic">Igreja</span>
             </h2>
             {profile && (
               <p className="text-xs text-muted-foreground mt-1 truncate">
