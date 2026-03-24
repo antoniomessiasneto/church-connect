@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
+import { Church } from "lucide-react";
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -21,7 +22,7 @@ export default function LoginPage() {
 
     try {
       if (isSignUp) {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -30,11 +31,26 @@ export default function LoginPage() {
           },
         });
         if (error) throw error;
-        toast.success("Conta criada! Verifique seu e-mail para confirmar.");
+        
+        // Check if email confirmation is required
+        if (data.user && !data.session) {
+          toast.success("Conta criada! Verifique seu e-mail para confirmar.");
+        } else if (data.session) {
+          toast.success("Conta criada com sucesso!");
+          navigate("/");
+        }
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-        toast.success("Bem-vindo de volta à comunidade!");
+        if (error) {
+          if (error.message === "Invalid login credentials") {
+            throw new Error("E-mail ou senha incorretos. Verifique e tente novamente.");
+          }
+          if (error.message === "Email not confirmed") {
+            throw new Error("E-mail não confirmado. Verifique sua caixa de entrada.");
+          }
+          throw error;
+        }
+        toast.success("Bem-vindo de volta!");
         navigate("/");
       }
     } catch (error: any) {
@@ -53,11 +69,14 @@ export default function LoginPage() {
         className="w-full max-w-md"
       >
         <div className="text-center mb-8">
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <Church className="h-8 w-8 text-primary" strokeWidth={1.5} />
+          </div>
           <h1 className="text-4xl font-display tracking-tight text-foreground">
-            Ecclesia <span className="text-primary italic">OS</span>
+            Presença <span className="text-primary italic">Igreja</span>
           </h1>
           <p className="text-muted-foreground mt-2">
-            Gestão com propósito, presença com intenção.
+            Gestão de presença com propósito
           </p>
         </div>
 
