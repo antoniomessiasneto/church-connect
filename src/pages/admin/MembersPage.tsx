@@ -51,22 +51,22 @@ export default function MembersPage() {
     e.preventDefault();
     setCreating(true);
     try {
-      // Sign up user (they'll get email confirmation)
-      const { error } = await supabase.auth.signUp({
-        email: newEmail,
-        password: Math.random().toString(36).slice(-10) + "A1!", // temp password
-        options: {
-          data: { full_name: newName },
-          emailRedirectTo: window.location.origin,
-        },
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Sessão expirada");
+
+      const res = await supabase.functions.invoke("create-member", {
+        body: { email: newEmail, full_name: newName, phone: newPhone || null },
       });
-      if (error) throw error;
-      toast.success("Membro cadastrado! Um e-mail de confirmação foi enviado.");
+
+      if (res.error) throw new Error(res.error.message);
+      if (res.data?.error) throw new Error(res.data.error);
+
+      toast.success("Membro cadastrado com sucesso!");
       setDialogOpen(false);
       setNewEmail("");
       setNewName("");
       setNewPhone("");
-      setTimeout(fetchMembers, 2000);
+      setTimeout(fetchMembers, 1000);
     } catch (error: any) {
       toast.error(error.message || "Erro ao cadastrar membro");
     } finally {
