@@ -1,13 +1,16 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, CalendarCheck, TrendingUp, UserCheck } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Users, CalendarCheck, TrendingUp, UserCheck, CalendarPlus, QrCode } from "lucide-react";
 import { motion } from "framer-motion";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 export default function DashboardPage() {
   const { profile } = useAuth();
+  const navigate = useNavigate();
   const [stats, setStats] = useState({ members: 0, events: 0, totalAttendance: 0, activeEvents: 0 });
   const [chartData, setChartData] = useState<{ name: string; presenças: number }[]>([]);
 
@@ -62,6 +65,18 @@ export default function DashboardPage() {
           Bem-vindo, <span className="italic text-primary">{profile?.full_name || "Admin"}</span>
         </h1>
         <p className="text-muted-foreground mt-1">Saúde da Comunidade</p>
+      </div>
+
+      {/* Quick Actions */}
+      <div className="flex flex-wrap gap-3">
+        <Button onClick={() => navigate("/admin/presencas")} className="gap-2">
+          <CalendarPlus className="h-4 w-4" strokeWidth={1.5} />
+          Criar Culto / Evento
+        </Button>
+        <Button variant="outline" onClick={() => navigate("/admin/presencas")} className="gap-2 border-border">
+          <QrCode className="h-4 w-4" strokeWidth={1.5} />
+          Ver QR Codes
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
