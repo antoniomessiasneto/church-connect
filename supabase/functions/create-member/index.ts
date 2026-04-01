@@ -55,7 +55,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { email, full_name, phone, birth_date } = await req.json();
+    const { email, full_name, phone, birth_date, password } = await req.json();
 
     if (!email || !full_name) {
       return new Response(JSON.stringify({ error: "Email e nome são obrigatórios" }), {

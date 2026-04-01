@@ -212,12 +212,16 @@ export default function MembersPage() {
                 <Input type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} required className="bg-input border-border" />
               </div>
               <div className="space-y-2">
+                <Label className="text-muted-foreground text-sm">Senha</Label>
+                <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required minLength={6} placeholder="Mínimo 6 caracteres" className="bg-input border-border" />
+              </div>
+              <div className="space-y-2">
                 <Label className="text-muted-foreground text-sm">Telefone</Label>
                 <Input value={newPhone} onChange={(e) => setNewPhone(e.target.value)} className="bg-input border-border" />
               </div>
               <div className="space-y-2">
                 <Label className="text-muted-foreground text-sm">Data de nascimento</Label>
-                <Input type="date" value={newBirthDate} onChange={(e) => setNewBirthDate(e.target.value)} className="bg-input border-border" />
+                <Input type="date" value={newBirthDate} onChange={(e) => setNewBirthDate(e.target.value)} required className="bg-input border-border" />
               </div>
               <Button type="submit" disabled={creating} className="w-full">
                 {creating ? "Cadastrando..." : "Cadastrar"}
