@@ -1,11 +1,22 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+const getAllowedOrigin = (req: Request): string => {
+  const appUrl = Deno.env.get("APP_URL");
+  if (appUrl) return appUrl;
+  const origin = req.headers.get("Origin") || "*";
+  return origin;
 };
 
+function getCorsHeaders(req: Request) {
+  return {
+    "Access-Control-Allow-Origin": getAllowedOrigin(req),
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  };
+}
+
 Deno.serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
+
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -19,7 +30,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Verify the caller is an admin
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -36,9 +46,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Check admin role
     const { data: roles } = await callerClient.from("user_roles").select("role").eq("user_id", caller.id);
-    const isAdmin = roles?.some((r) => r.role === "admin");
+    const isAdmin = roles?.some((r: any) => r.role === "admin");
     if (!isAdmin) {
       return new Response(JSON.stringify({ error: "Apenas administradores podem cadastrar membros" }), {
         status: 403,
@@ -46,7 +55,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { email, full_name, phone } = await req.json();
+    const { email, full_name, phone, birth_date } = await req.json();
 
     if (!email || !full_name) {
       return new Response(JSON.stringify({ error: "Email e nome são obrigatórios" }), {
@@ -55,7 +64,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Use service role to create user without affecting admin session
     const adminClient = createClient(supabaseUrl, serviceRoleKey, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
@@ -70,18 +78,49 @@ Deno.serve(async (req) => {
     });
 
     if (signUpError) {
+      const msg = signUpError.message || "";
+      if (msg.includes("already") || msg.includes("duplicate") || msg.includes("registered")) {
+        return new Response(JSON.stringify({ error: "Este e-mail já está cadastrado. Tente outro e-mail." }), {
+          status: 409,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
       return new Response(JSON.stringify({ error: signUpError.message }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Update phone if provided
-    if (phone && newUser.user) {
-      await adminClient.from("profiles").update({ phone }).eq("user_id", newUser.user.id);
+    // Update phone and birth_date if provided
+    if (newUser.user) {
+      const updates: Record<string, any> = {};
+      if (phone) updates.phone = phone;
+      if (birth_date) updates.birth_date = birth_date;
+      if (Object.keys(updates).length > 0) {
+        await adminClient.from("profiles").update(updates).eq("user_id", newUser.user.id);
+      }
     }
 
-    return new Response(JSON.stringify({ success: true, user_id: newUser.user?.id }), {
+    // Generate password reset link so member can set their own password
+    let resetLink: string | null = null;
+    try {
+      const { data: linkData } = await adminClient.auth.admin.generateLink({
+        type: "magiclink",
+        email,
+      });
+      if (linkData?.properties?.action_link) {
+        resetLink = linkData.properties.action_link;
+      }
+    } catch {
+      // Non-critical, continue
+    }
+
+    return new Response(JSON.stringify({ 
+      success: true, 
+      user_id: newUser.user?.id,
+      temp_password: tempPassword,
+      reset_link: resetLink,
+    }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
