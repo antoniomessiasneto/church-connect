@@ -49,16 +49,24 @@ Deno.serve(async (req) => {
     const { data: roles } = await callerClient.from("user_roles").select("role").eq("user_id", caller.id);
     const isAdmin = roles?.some((r: any) => r.role === "admin");
     if (!isAdmin) {
-      return new Response(JSON.stringify({ error: "Apenas administradores podem editar membros" }), {
+      return new Response(JSON.stringify({ error: "Apenas administradores podem excluir membros" }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const { user_id, full_name, phone, address, birth_date } = await req.json();
+    const { user_id } = await req.json();
 
-    if (!user_id || !full_name) {
-      return new Response(JSON.stringify({ error: "ID e nome são obrigatórios" }), {
+    if (!user_id) {
+      return new Response(JSON.stringify({ error: "ID do usuário é obrigatório" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Prevent self-deletion
+    if (user_id === caller.id) {
+      return new Response(JSON.stringify({ error: "Você não pode excluir sua própria conta" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -68,10 +76,7 @@ Deno.serve(async (req) => {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    const { error } = await adminClient
-      .from("profiles")
-      .update({ full_name, phone, address, birth_date })
-      .eq("user_id", user_id);
+    const { error } = await adminClient.auth.admin.deleteUser(user_id);
 
     if (error) {
       return new Response(JSON.stringify({ error: error.message }), {

@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, useRef, ReactNode } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -30,6 +30,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<AppRole | null>(null);
   const [profile, setProfile] = useState<AuthContextType["profile"]>(null);
   const [loading, setLoading] = useState(true);
+  const fetchingRef = useRef(false);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -37,24 +38,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(session?.user ?? null);
 
       if (session?.user) {
-        setLoading(true);
-        // Defer fetching to avoid deadlock
-        setTimeout(() => {
-          fetchUserData(session.user.id);
-        }, 0);
+        if (!fetchingRef.current) {
+          fetchingRef.current = true;
+          fetchUserData(session.user.id).finally(() => {
+            fetchingRef.current = false;
+          });
+        }
       } else {
         setRole(null);
         setProfile(null);
-        setLoading(false);
-      }
-    });
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchUserData(session.user.id);
-      } else {
         setLoading(false);
       }
     });
@@ -69,6 +61,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         supabase.from("profiles").select("full_name, phone, avatar_url").eq("user_id", userId).single(),
       ]);
 
+      if (rolesRes.error) {
+        console.error("Erro ao buscar role:", rolesRes.error);
+        setRole(null);
+        setLoading(false);
+        return;
+      }
+
       if (rolesRes.data && rolesRes.data.length > 0) {
         const hasAdmin = rolesRes.data.some((r) => r.role === "admin");
         setRole(hasAdmin ? "admin" : "member");
@@ -81,6 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     } catch (error) {
       console.error("Error fetching user data:", error);
+      setRole(null);
     } finally {
       setLoading(false);
     }
