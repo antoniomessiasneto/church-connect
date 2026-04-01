@@ -14,6 +14,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
+  const [birthDate, setBirthDate] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -22,6 +23,12 @@ export default function LoginPage() {
 
     try {
       if (isSignUp) {
+        if (!birthDate) {
+          toast.error("Por favor, preencha sua data de nascimento.");
+          setLoading(false);
+          return;
+        }
+
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
@@ -30,9 +37,32 @@ export default function LoginPage() {
             emailRedirectTo: window.location.origin,
           },
         });
-        if (error) throw error;
-        
-        // Check if email confirmation is required
+
+        if (error) {
+          if (error.message.includes("already") || error.message.includes("registered") || error.message.includes("duplicate")) {
+            throw new Error("Este e-mail já está cadastrado. Tente fazer login ou use outro e-mail.");
+          }
+          throw error;
+        }
+
+        // If user created but no session (fake signup response for existing email)
+        if (data.user && !data.user.identities?.length) {
+          toast.error("Este e-mail já está cadastrado. Tente fazer login ou use outro e-mail.");
+          setLoading(false);
+          return;
+        }
+
+        // Update birth_date in profile
+        if (data.user) {
+          // Wait a moment for the trigger to create the profile
+          setTimeout(async () => {
+            await supabase
+              .from("profiles")
+              .update({ birth_date: birthDate })
+              .eq("user_id", data.user!.id);
+          }, 1000);
+        }
+
         if (data.user && !data.session) {
           toast.success("Conta criada! Verifique seu e-mail para confirmar.");
         } else if (data.session) {
@@ -87,17 +117,30 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {isSignUp && (
-              <div className="space-y-2">
-                <Label htmlFor="name" className="text-muted-foreground text-sm">Nome completo</Label>
-                <Input
-                  id="name"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder="Seu nome"
-                  required
-                  className="bg-input border-border"
-                />
-              </div>
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="name" className="text-muted-foreground text-sm">Nome completo</Label>
+                  <Input
+                    id="name"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="Seu nome"
+                    required
+                    className="bg-input border-border"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="birthDate" className="text-muted-foreground text-sm">Data de nascimento</Label>
+                  <Input
+                    id="birthDate"
+                    type="date"
+                    value={birthDate}
+                    onChange={(e) => setBirthDate(e.target.value)}
+                    required
+                    className="bg-input border-border"
+                  />
+                </div>
+              </>
             )}
             <div className="space-y-2">
               <Label htmlFor="email" className="text-muted-foreground text-sm">E-mail</Label>

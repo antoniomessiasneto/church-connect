@@ -32,6 +32,7 @@ export default function MembersPage() {
   const [newEmail, setNewEmail] = useState("");
   const [newName, setNewName] = useState("");
   const [newPhone, setNewPhone] = useState("");
+  const [newPassword, setNewPassword] = useState("");
   const [newBirthDate, setNewBirthDate] = useState("");
   const [creating, setCreating] = useState(false);
   const [tempCredentials, setTempCredentials] = useState<{ email: string; password: string } | null>(null);
@@ -75,24 +76,37 @@ export default function MembersPage() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Sessão expirada");
 
+      if (!newBirthDate) {
+        toast.error("Data de nascimento é obrigatória.");
+        setCreating(false);
+        return;
+      }
+      if (!newPassword || newPassword.length < 6) {
+        toast.error("A senha deve ter pelo menos 6 caracteres.");
+        setCreating(false);
+        return;
+      }
+
       const res = await supabase.functions.invoke("create-member", {
         body: { 
           email: newEmail, 
           full_name: newName, 
           phone: newPhone || null,
-          birth_date: newBirthDate || null,
+          birth_date: newBirthDate,
+          password: newPassword,
         },
       });
 
       if (res.error) throw new Error(res.error.message);
       if (res.data?.error) throw new Error(res.data.error);
 
-      setTempCredentials({ email: newEmail, password: res.data?.temp_password || "" });
+      setTempCredentials({ email: newEmail, password: newPassword });
       setDialogOpen(false);
       setCredentialsDialogOpen(true);
       setNewEmail("");
       setNewName("");
       setNewPhone("");
+      setNewPassword("");
       setNewBirthDate("");
       fetchMembers();
     } catch (error: any) {
@@ -198,12 +212,16 @@ export default function MembersPage() {
                 <Input type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} required className="bg-input border-border" />
               </div>
               <div className="space-y-2">
+                <Label className="text-muted-foreground text-sm">Senha</Label>
+                <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required minLength={6} placeholder="Mínimo 6 caracteres" className="bg-input border-border" />
+              </div>
+              <div className="space-y-2">
                 <Label className="text-muted-foreground text-sm">Telefone</Label>
                 <Input value={newPhone} onChange={(e) => setNewPhone(e.target.value)} className="bg-input border-border" />
               </div>
               <div className="space-y-2">
                 <Label className="text-muted-foreground text-sm">Data de nascimento</Label>
-                <Input type="date" value={newBirthDate} onChange={(e) => setNewBirthDate(e.target.value)} className="bg-input border-border" />
+                <Input type="date" value={newBirthDate} onChange={(e) => setNewBirthDate(e.target.value)} required className="bg-input border-border" />
               </div>
               <Button type="submit" disabled={creating} className="w-full">
                 {creating ? "Cadastrando..." : "Cadastrar"}

@@ -55,10 +55,17 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { email, full_name, phone, birth_date } = await req.json();
+    const { email, full_name, phone, birth_date, password } = await req.json();
 
     if (!email || !full_name) {
       return new Response(JSON.stringify({ error: "Email e nome são obrigatórios" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (!password || password.length < 6) {
+      return new Response(JSON.stringify({ error: "Senha é obrigatória e deve ter pelo menos 6 caracteres" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -68,11 +75,9 @@ Deno.serve(async (req) => {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    const tempPassword = crypto.randomUUID().slice(0, 12) + "A1!";
-
     const { data: newUser, error: signUpError } = await adminClient.auth.admin.createUser({
       email,
-      password: tempPassword,
+      password,
       email_confirm: true,
       user_metadata: { full_name },
     });
@@ -101,25 +106,9 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Generate password reset link so member can set their own password
-    let resetLink: string | null = null;
-    try {
-      const { data: linkData } = await adminClient.auth.admin.generateLink({
-        type: "magiclink",
-        email,
-      });
-      if (linkData?.properties?.action_link) {
-        resetLink = linkData.properties.action_link;
-      }
-    } catch {
-      // Non-critical, continue
-    }
-
     return new Response(JSON.stringify({ 
       success: true, 
       user_id: newUser.user?.id,
-      temp_password: tempPassword,
-      reset_link: resetLink,
     }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
