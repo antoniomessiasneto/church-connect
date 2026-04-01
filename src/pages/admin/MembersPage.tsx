@@ -76,24 +76,37 @@ export default function MembersPage() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Sessão expirada");
 
+      if (!newBirthDate) {
+        toast.error("Data de nascimento é obrigatória.");
+        setCreating(false);
+        return;
+      }
+      if (!newPassword || newPassword.length < 6) {
+        toast.error("A senha deve ter pelo menos 6 caracteres.");
+        setCreating(false);
+        return;
+      }
+
       const res = await supabase.functions.invoke("create-member", {
         body: { 
           email: newEmail, 
           full_name: newName, 
           phone: newPhone || null,
-          birth_date: newBirthDate || null,
+          birth_date: newBirthDate,
+          password: newPassword,
         },
       });
 
       if (res.error) throw new Error(res.error.message);
       if (res.data?.error) throw new Error(res.data.error);
 
-      setTempCredentials({ email: newEmail, password: res.data?.temp_password || "" });
+      setTempCredentials({ email: newEmail, password: newPassword });
       setDialogOpen(false);
       setCredentialsDialogOpen(true);
       setNewEmail("");
       setNewName("");
       setNewPhone("");
+      setNewPassword("");
       setNewBirthDate("");
       fetchMembers();
     } catch (error: any) {
