@@ -106,25 +106,9 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Generate password reset link so member can set their own password
-    let resetLink: string | null = null;
-    try {
-      const { data: linkData } = await adminClient.auth.admin.generateLink({
-        type: "magiclink",
-        email,
-      });
-      if (linkData?.properties?.action_link) {
-        resetLink = linkData.properties.action_link;
-      }
-    } catch {
-      // Non-critical, continue
-    }
-
     return new Response(JSON.stringify({ 
       success: true, 
       user_id: newUser.user?.id,
-      temp_password: tempPassword,
-      reset_link: resetLink,
     }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
