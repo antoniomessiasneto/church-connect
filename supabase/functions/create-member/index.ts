@@ -64,6 +64,13 @@ Deno.serve(async (req) => {
       });
     }
 
+    if (!password || password.length < 6) {
+      return new Response(JSON.stringify({ error: "Senha é obrigatória e deve ter pelo menos 6 caracteres" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const adminClient = createClient(supabaseUrl, serviceRoleKey, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
