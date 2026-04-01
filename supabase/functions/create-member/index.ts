@@ -75,11 +75,9 @@ Deno.serve(async (req) => {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    const tempPassword = crypto.randomUUID().slice(0, 12) + "A1!";
-
     const { data: newUser, error: signUpError } = await adminClient.auth.admin.createUser({
       email,
-      password: tempPassword,
+      password,
       email_confirm: true,
       user_metadata: { full_name },
     });
