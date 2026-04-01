@@ -32,6 +32,7 @@ export default function MembersPage() {
   const [newEmail, setNewEmail] = useState("");
   const [newName, setNewName] = useState("");
   const [newPhone, setNewPhone] = useState("");
+  const [newPassword, setNewPassword] = useState("");
   const [newBirthDate, setNewBirthDate] = useState("");
   const [creating, setCreating] = useState(false);
   const [tempCredentials, setTempCredentials] = useState<{ email: string; password: string } | null>(null);
