@@ -11,6 +11,7 @@ import DashboardPage from "@/pages/admin/DashboardPage";
 import MembersPage from "@/pages/admin/MembersPage";
 import AttendancePage from "@/pages/admin/AttendancePage";
 import ReportsPage from "@/pages/admin/ReportsPage";
+import ResetPasswordPage from "@/pages/ResetPasswordPage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -33,6 +34,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<RootRedirect />} />
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route path="/checkin" element={<CheckinPage />} />
             <Route path="/admin" element={<AdminLayout />}>
               <Route index element={<DashboardPage />} />
