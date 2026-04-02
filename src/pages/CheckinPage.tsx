@@ -43,7 +43,7 @@ export default function CheckinPage() {
       // Find event by code
       const { data: event, error: eventError } = await supabase
         .from("events")
-        .select("id, title, is_active")
+        .select("id, title, is_active, event_date")
         .eq("attendance_code", codeToUse.toUpperCase())
         .single();
 
@@ -54,6 +54,19 @@ export default function CheckinPage() {
 
       if (!event.is_active) {
         toast.error("Este evento não está mais ativo.");
+        return;
+      }
+
+      // Check if the event is today
+      const eventDate = new Date(event.event_date);
+      const today = new Date();
+      const isSameDay =
+        eventDate.getFullYear() === today.getFullYear() &&
+        eventDate.getMonth() === today.getMonth() &&
+        eventDate.getDate() === today.getDate();
+
+      if (!isSameDay) {
+        toast.error("A presença só pode ser registrada no dia do evento.");
         return;
       }
 
