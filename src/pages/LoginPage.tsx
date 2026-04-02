@@ -16,6 +16,26 @@ export default function LoginPage() {
   const [fullName, setFullName] = useState("");
   const [birthDate, setBirthDate] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showForgot, setShowForgot] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotLoading, setForgotLoading] = useState(false);
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setForgotLoading(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (error) throw error;
+      toast.success("E-mail de recuperação enviado! Verifique sua caixa de entrada.");
+      setShowForgot(false);
+    } catch (error: any) {
+      toast.error(error.message || "Erro ao enviar e-mail de recuperação.");
+    } finally {
+      setForgotLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

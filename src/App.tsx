@@ -34,6 +34,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<RootRedirect />} />
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route path="/checkin" element={<CheckinPage />} />
             <Route path="/admin" element={<AdminLayout />}>
               <Route index element={<DashboardPage />} />
