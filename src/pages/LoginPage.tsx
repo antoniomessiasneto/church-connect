@@ -171,6 +171,18 @@ export default function LoginPage() {
             <Button type="submit" disabled={loading} className="w-full">
               {loading ? "Carregando..." : isSignUp ? "Criar conta" : "Entrar"}
             </Button>
+
+            {!isSignUp && (
+              <div className="text-center mt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowForgot(true)}
+                  className="text-sm text-muted-foreground hover:text-primary transition-colors"
+                >
+                  Esqueceu a senha?
+                </button>
+              </div>
+            )}
           </form>
 
           <div className="mt-6 text-center">
