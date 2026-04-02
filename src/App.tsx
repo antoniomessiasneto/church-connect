@@ -20,6 +20,8 @@ function RootRedirect() {
   const { user, role, loading } = useAuth();
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-background"><p className="text-muted-foreground">Carregando...</p></div>;
   if (!user) return <Navigate to="/login" replace />;
+  // Wait for role to be fetched before redirecting
+  if (role === null) return <div className="min-h-screen flex items-center justify-center bg-background"><p className="text-muted-foreground">Carregando...</p></div>;
   if (role === "admin") return <Navigate to="/admin" replace />;
   return <Navigate to="/checkin" replace />;
 }
