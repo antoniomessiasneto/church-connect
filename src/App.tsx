@@ -13,14 +13,25 @@ import AttendancePage from "@/pages/admin/AttendancePage";
 import ReportsPage from "@/pages/admin/ReportsPage";
 import ResetPasswordPage from "@/pages/ResetPasswordPage";
 import NotFound from "@/pages/NotFound";
+import { toast } from "sonner";
+import { useEffect, useRef } from "react";
 
 const queryClient = new QueryClient();
 
 function RootRedirect() {
-  const { user, role, loading } = useAuth();
+  const { user, role, loading, authError } = useAuth();
+  const toastShownRef = useRef(false);
+
+  useEffect(() => {
+    if (!loading && !role && authError && !toastShownRef.current) {
+      toastShownRef.current = true;
+      toast.error("Erro ao carregar permissões. Faça login novamente.");
+    }
+  }, [loading, role, authError]);
+
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-background"><p className="text-muted-foreground">Carregando...</p></div>;
   if (!user) return <Navigate to="/login" replace />;
-  // Wait for role to be fetched before redirecting
+  if (!loading && authError) return <Navigate to="/login" replace />;
   if (role === null) return <div className="min-h-screen flex items-center justify-center bg-background"><p className="text-muted-foreground">Carregando...</p></div>;
   if (role === "admin") return <Navigate to="/admin" replace />;
   return <Navigate to="/checkin" replace />;

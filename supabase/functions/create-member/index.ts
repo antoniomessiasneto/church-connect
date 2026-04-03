@@ -1,22 +1,11 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
-const getAllowedOrigin = (req: Request): string => {
-  const appUrl = Deno.env.get("APP_URL");
-  if (appUrl) return appUrl;
-  const origin = req.headers.get("Origin") || "*";
-  return origin;
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-function getCorsHeaders(req: Request) {
-  return {
-    "Access-Control-Allow-Origin": getAllowedOrigin(req),
-    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  };
-}
-
 Deno.serve(async (req) => {
-  const corsHeaders = getCorsHeaders(req);
-
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -96,14 +85,14 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Update phone and birth_date if provided
+    // Use upsert to avoid race condition with handle_new_user trigger
     if (newUser.user) {
-      const updates: Record<string, any> = {};
-      if (phone) updates.phone = phone;
-      if (birth_date) updates.birth_date = birth_date;
-      if (Object.keys(updates).length > 0) {
-        await adminClient.from("profiles").update(updates).eq("user_id", newUser.user.id);
-      }
+      await adminClient.from("profiles").upsert({
+        user_id: newUser.user.id,
+        full_name,
+        ...(phone && { phone }),
+        ...(birth_date && { birth_date }),
+      }, { onConflict: "user_id" });
     }
 
     return new Response(JSON.stringify({ 

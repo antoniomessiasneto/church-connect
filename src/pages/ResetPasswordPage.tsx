@@ -16,9 +16,9 @@ export default function ResetPasswordPage() {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    // Check if we have a recovery session
     const hash = window.location.hash;
-    if (hash && hash.includes("type=recovery")) {
+    const params = new URLSearchParams(window.location.search);
+    if ((hash && hash.includes("type=recovery")) || params.has("code")) {
       setReady(true);
     }
 

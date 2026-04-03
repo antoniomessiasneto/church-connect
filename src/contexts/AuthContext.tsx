@@ -10,6 +10,7 @@ interface AuthContextType {
   role: AppRole | null;
   profile: { full_name: string; phone: string | null; avatar_url: string | null } | null;
   loading: boolean;
+  authError: boolean;
   signOut: () => Promise<void>;
 }
 
@@ -19,6 +20,7 @@ const AuthContext = createContext<AuthContextType>({
   role: null,
   profile: null,
   loading: true,
+  authError: false,
   signOut: async () => {},
 });
 
@@ -30,6 +32,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<AppRole | null>(null);
   const [profile, setProfile] = useState<AuthContextType["profile"]>(null);
   const [loading, setLoading] = useState(true);
+  const [authError, setAuthError] = useState(false);
   const fetchingRef = useRef(false);
 
   useEffect(() => {
@@ -47,6 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         setRole(null);
         setProfile(null);
+        setAuthError(false);
         setLoading(false);
       }
     });
@@ -64,9 +68,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (rolesRes.error) {
         console.error("Erro ao buscar role:", rolesRes.error);
         setRole(null);
+        setAuthError(true);
         setLoading(false);
         return;
       }
+
+      setAuthError(false);
 
       if (rolesRes.data && rolesRes.data.length > 0) {
         const hasAdmin = rolesRes.data.some((r) => r.role === "admin");
@@ -81,6 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error("Error fetching user data:", error);
       setRole(null);
+      setAuthError(true);
     } finally {
       setLoading(false);
     }
@@ -92,10 +100,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setRole(null);
     setProfile(null);
+    setAuthError(false);
   };
 
   return (
-    <AuthContext.Provider value={{ session, user, role, profile, loading, signOut }}>
+    <AuthContext.Provider value={{ session, user, role, profile, loading, authError, signOut }}>
       {children}
     </AuthContext.Provider>
   );
