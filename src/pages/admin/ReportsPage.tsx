@@ -54,8 +54,17 @@ export default function ReportsPage() {
   }, []);
 
   async function fetchData() {
+    // Fetch last 12 months of events with limit
+    const twelveMonthsAgo = new Date();
+    twelveMonthsAgo.setFullYear(twelveMonthsAgo.getFullYear() - 1);
+
     const [eventsRes, membersRes] = await Promise.all([
-      supabase.from("events").select("id, title, event_date, event_type, attendance(id, user_id)").order("event_date"),
+      supabase
+        .from("events")
+        .select("id, title, event_date, event_type, attendance(id, user_id)")
+        .gte("event_date", twelveMonthsAgo.toISOString())
+        .order("event_date", { ascending: false })
+        .limit(200),
       supabase.from("profiles").select("user_id, full_name, phone"),
     ]);
 

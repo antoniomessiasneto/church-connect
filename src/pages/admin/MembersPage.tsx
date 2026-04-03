@@ -1,11 +1,14 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Search, UserPlus, Pencil, Trash2, Copy } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Search, UserPlus, Pencil, Trash2, Copy, ShieldCheck, ShieldOff } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 
@@ -17,9 +20,11 @@ interface Member {
   address: string | null;
   birth_date: string | null;
   created_at: string;
+  isAdmin: boolean;
 }
 
 export default function MembersPage() {
+  const { user } = useAuth();
   const [members, setMembers] = useState<Member[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
@@ -27,6 +32,7 @@ export default function MembersPage() {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [credentialsDialogOpen, setCredentialsDialogOpen] = useState(false);
+  const [roleDialogOpen, setRoleDialogOpen] = useState(false);
 
   // Create form
   const [newEmail, setNewEmail] = useState("");
@@ -49,18 +55,30 @@ export default function MembersPage() {
   const [deleting, setDeleting] = useState(false);
   const [deleteMember, setDeleteMember] = useState<Member | null>(null);
 
+  // Role toggle
+  const [roleMember, setRoleMember] = useState<Member | null>(null);
+  const [togglingRole, setTogglingRole] = useState(false);
+
   useEffect(() => {
     fetchMembers();
   }, []);
 
   async function fetchMembers() {
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("id, user_id, full_name, phone, address, birth_date, created_at")
-      .order("full_name");
+    const [profilesRes, adminRolesRes] = await Promise.all([
+      supabase
+        .from("profiles")
+        .select("id, user_id, full_name, phone, address, birth_date, created_at")
+        .order("full_name"),
+      supabase
+        .from("user_roles")
+        .select("user_id")
+        .eq("role", "admin"),
+    ]);
 
-    if (data) setMembers(data);
-    if (error) console.error(error);
+    const profiles = profilesRes.data || [];
+    const adminIds = new Set(adminRolesRes.data?.map((r) => r.user_id) ?? []);
+    const merged = profiles.map((p) => ({ ...p, isAdmin: adminIds.has(p.user_id) }));
+    setMembers(merged);
     setLoading(false);
   }
 
@@ -179,10 +197,40 @@ export default function MembersPage() {
     }
   };
 
+  const openRoleDialog = (member: Member) => {
+    setRoleMember(member);
+    setRoleDialogOpen(true);
+  };
+
+  const handleToggleAdmin = async () => {
+    if (!roleMember) return;
+    setTogglingRole(true);
+    const newRole = roleMember.isAdmin ? "member" : "admin";
+    try {
+      const res = await supabase.functions.invoke("set-member-role", {
+        body: { user_id: roleMember.user_id, role: newRole },
+      });
+
+      if (res.error) throw new Error(res.error.message);
+      if (res.data?.error) throw new Error(res.data.error);
+
+      const label = newRole === "admin" ? "promovido a administrador" : "removido como administrador";
+      toast.success(`${roleMember.full_name} foi ${label}.`);
+      setRoleDialogOpen(false);
+      fetchMembers();
+    } catch (error: any) {
+      toast.error(error.message || "Erro ao alterar permissão");
+    } finally {
+      setTogglingRole(false);
+    }
+  };
+
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     toast.success("Copiado!");
   };
+
+  const isSelf = (member: Member) => member.user_id === user?.id;
 
   return (
     <div className="space-y-6">
@@ -321,6 +369,30 @@ export default function MembersPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Role Toggle Confirmation Dialog */}
+      <Dialog open={roleDialogOpen} onOpenChange={setRoleDialogOpen}>
+        <DialogContent className="bg-card border-border">
+          <DialogHeader>
+            <DialogTitle className="font-display text-xl">
+              {roleMember?.isAdmin ? "Remover Administrador" : "Tornar Administrador"}
+            </DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              {roleMember?.isAdmin
+                ? `O membro "${roleMember?.full_name}" perderá acesso ao painel administrativo.`
+                : `Esta ação dará acesso total ao painel administrativo para "${roleMember?.full_name}". Tem certeza?`}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex gap-3 justify-end pt-4">
+            <Button variant="outline" onClick={() => setRoleDialogOpen(false)} className="border-border">
+              Cancelar
+            </Button>
+            <Button onClick={handleToggleAdmin} disabled={togglingRole}>
+              {togglingRole ? "Alterando..." : roleMember?.isAdmin ? "Remover admin" : "Tornar admin"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" strokeWidth={1.5} />
         <Input
@@ -351,20 +423,68 @@ export default function MembersPage() {
                       {member.full_name.charAt(0).toUpperCase()}
                     </div>
                     <div>
-                      <p className="font-medium text-foreground">{member.full_name || "Sem nome"}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium text-foreground">{member.full_name || "Sem nome"}</p>
+                        {member.isAdmin && (
+                          <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30 text-[10px] px-1.5 py-0">
+                            Admin
+                          </Badge>
+                        )}
+                      </div>
                       <p className="text-sm text-muted-foreground">{member.phone || "Sem telefone"}</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <p className="text-xs text-muted-foreground tabular-nums hidden sm:block">
+                  <div className="flex items-center gap-1">
+                    <p className="text-xs text-muted-foreground tabular-nums hidden sm:block mr-2">
                       {new Date(member.created_at).toLocaleDateString("pt-BR")}
                     </p>
+                    {isSelf(member) ? (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button variant="ghost" size="icon" disabled className="text-muted-foreground/30">
+                            <ShieldCheck className="h-4 w-4" strokeWidth={1.5} />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Você não pode alterar seu próprio cargo</TooltipContent>
+                      </Tooltip>
+                    ) : (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => openRoleDialog(member)}
+                            className={member.isAdmin ? "text-amber-400 hover:text-amber-300" : "text-muted-foreground hover:text-primary"}
+                          >
+                            {member.isAdmin ? (
+                              <ShieldOff className="h-4 w-4" strokeWidth={1.5} />
+                            ) : (
+                              <ShieldCheck className="h-4 w-4" strokeWidth={1.5} />
+                            )}
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {member.isAdmin ? "Remover admin" : "Tornar admin"}
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
                     <Button variant="ghost" size="icon" onClick={() => openEditDialog(member)} className="text-muted-foreground hover:text-primary">
                       <Pencil className="h-4 w-4" strokeWidth={1.5} />
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={() => openDeleteDialog(member)} className="text-muted-foreground hover:text-destructive">
-                      <Trash2 className="h-4 w-4" strokeWidth={1.5} />
-                    </Button>
+                    {isSelf(member) ? (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button variant="ghost" size="icon" disabled className="text-muted-foreground/30">
+                            <Trash2 className="h-4 w-4" strokeWidth={1.5} />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Você não pode excluir sua própria conta</TooltipContent>
+                      </Tooltip>
+                    ) : (
+                      <Button variant="ghost" size="icon" onClick={() => openDeleteDialog(member)} className="text-muted-foreground hover:text-destructive">
+                        <Trash2 className="h-4 w-4" strokeWidth={1.5} />
+                      </Button>
+                    )}
                   </div>
                 </CardContent>
               </Card>
