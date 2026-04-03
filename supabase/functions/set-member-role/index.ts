@@ -38,23 +38,24 @@ Deno.serve(async (req) => {
     const { data: roles } = await callerClient.from("user_roles").select("role").eq("user_id", caller.id);
     const isAdmin = roles?.some((r: any) => r.role === "admin");
     if (!isAdmin) {
-      return new Response(JSON.stringify({ error: "Apenas administradores podem excluir membros" }), {
+      return new Response(JSON.stringify({ error: "Apenas administradores podem alterar permissões" }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const { user_id } = await req.json();
+    const { user_id, role } = await req.json();
 
-    if (!user_id) {
-      return new Response(JSON.stringify({ error: "ID do usuário é obrigatório" }), {
+    if (!user_id || !["admin", "member"].includes(role)) {
+      return new Response(JSON.stringify({ error: "user_id e role válido são obrigatórios" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    if (user_id === caller.id) {
-      return new Response(JSON.stringify({ error: "Você não pode excluir sua própria conta" }), {
+    // Prevent self-demotion
+    if (user_id === caller.id && role === "member") {
+      return new Response(JSON.stringify({ error: "Você não pode remover seu próprio acesso de administrador" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -64,27 +65,30 @@ Deno.serve(async (req) => {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    // Check if target is admin - prevent deleting other admins
-    const { data: targetRoles } = await adminClient
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", user_id);
-
-    const targetIsAdmin = targetRoles?.some((r: any) => r.role === "admin");
-    if (targetIsAdmin) {
-      return new Response(JSON.stringify({ error: "Não é possível excluir outro administrador." }), {
-        status: 403,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const { error } = await adminClient.auth.admin.deleteUser(user_id);
-
-    if (error) {
-      return new Response(JSON.stringify({ error: error.message }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    if (role === "admin") {
+      // Add admin role
+      const { error } = await adminClient
+        .from("user_roles")
+        .upsert({ user_id, role: "admin" }, { onConflict: "user_id,role" });
+      if (error) {
+        return new Response(JSON.stringify({ error: error.message }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    } else {
+      // Remove admin role
+      const { error } = await adminClient
+        .from("user_roles")
+        .delete()
+        .eq("user_id", user_id)
+        .eq("role", "admin");
+      if (error) {
+        return new Response(JSON.stringify({ error: error.message }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
     return new Response(JSON.stringify({ success: true }), {

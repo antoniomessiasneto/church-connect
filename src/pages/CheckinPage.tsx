@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -25,22 +25,12 @@ export default function CheckinPage() {
     }
   }, [loading, user, navigate]);
 
-  // Auto-submit if code came from QR
-  useEffect(() => {
-    const qrCode = searchParams.get("code");
-    if (qrCode && user && !loading) {
-      setCode(qrCode);
-      handleCheckin(qrCode);
-    }
-  }, [searchParams, user, loading]);
-
-  async function handleCheckin(attendanceCode?: string) {
+  const handleCheckin = useCallback(async (attendanceCode?: string) => {
     const codeToUse = attendanceCode || code;
     if (!codeToUse.trim() || !user) return;
     setSubmitting(true);
 
     try {
-      // Find event by code
       const { data: event, error: eventError } = await supabase
         .from("events")
         .select("id, title, is_active, event_date")
@@ -57,7 +47,6 @@ export default function CheckinPage() {
         return;
       }
 
-      // Check if the event is today
       const eventDate = new Date(event.event_date);
       const today = new Date();
       const isSameDay =
@@ -70,7 +59,6 @@ export default function CheckinPage() {
         return;
       }
 
-      // Register attendance
       const { error: attendanceError } = await supabase.from("attendance").insert({
         event_id: event.id,
         user_id: user.id,
@@ -93,7 +81,16 @@ export default function CheckinPage() {
     } finally {
       setSubmitting(false);
     }
-  }
+  }, [code, user]);
+
+  // Auto-submit if code came from QR
+  useEffect(() => {
+    const qrCode = searchParams.get("code");
+    if (qrCode && user && !loading) {
+      setCode(qrCode);
+      handleCheckin(qrCode);
+    }
+  }, [searchParams, user, loading, handleCheckin]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -115,7 +112,6 @@ export default function CheckinPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      {/* Header */}
       <header className="flex items-center justify-between px-4 py-3 border-b border-border">
         <span className="font-display text-lg">
           Presença <span className="text-primary italic">Igreja</span>

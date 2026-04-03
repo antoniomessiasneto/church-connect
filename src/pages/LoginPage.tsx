@@ -72,15 +72,13 @@ export default function LoginPage() {
           return;
         }
 
-        // Update birth_date in profile
+        // Update birth_date in profile using upsert to avoid race condition
         if (data.user) {
-          // Wait a moment for the trigger to create the profile
-          setTimeout(async () => {
-            await supabase
-              .from("profiles")
-              .update({ birth_date: birthDate })
-              .eq("user_id", data.user!.id);
-          }, 1000);
+          await supabase.from("profiles").upsert({
+            user_id: data.user.id,
+            full_name: fullName,
+            birth_date: birthDate,
+          }, { onConflict: "user_id" });
         }
 
         if (data.user && !data.session) {
