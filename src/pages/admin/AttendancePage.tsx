@@ -120,8 +120,8 @@ export default function AttendancePage() {
                 <Input value={title} onChange={(e) => setTitle(e.target.value)} required placeholder="Culto de Domingo" className="bg-input border-border" />
               </div>
               <div className="space-y-2">
-                <Label className="text-muted-foreground text-sm">Data e Hora</Label>
-                <Input type="datetime-local" value={eventDate} onChange={(e) => setEventDate(e.target.value)} required className="bg-input border-border" />
+                <Label className="text-muted-foreground text-sm">Data</Label>
+                <Input type="date" value={eventDate} onChange={(e) => setEventDate(e.target.value)} required className="bg-input border-border" />
               </div>
               <div className="space-y-2">
                 <Label className="text-muted-foreground text-sm">Tipo</Label>
@@ -200,8 +200,6 @@ export default function AttendancePage() {
                           day: "2-digit",
                           month: "short",
                           year: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
                         })}
                       </span>
                       <span className="text-xs text-primary">
